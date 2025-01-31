@@ -27,7 +27,7 @@ By using this Tool, you agree that you hold responsibility and accountability of
 
 ## How To Setup/Install
 
-#### First of all please set the BOT Token in the config.json file!
+#### First of all please set the BOT Token in the config/config.json file!
 ```json
 {
     "bot_token": "BOT-TOKEN-HERE",

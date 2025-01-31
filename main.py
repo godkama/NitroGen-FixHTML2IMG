@@ -1,11 +1,18 @@
 import discord
 from discord import app_commands
-from discord.ui import View, Select
-import datetime, random, traceback, json, os
+import datetime, random, traceback, json, os, base64
 from html2image import Html2Image
-hti = Html2Image()
-config = json.load(open("config.json"))
-current_directory = os.getcwd().replace('\\', '/')
+
+hti = Html2Image(custom_flags=["--default-background-color=ffffff"])
+config = json.load(open("config/config.json"))
+current_directory = os.path.abspath(os.path.dirname(__file__))
+
+def encode_font(font_path):
+    with open(font_path, "rb") as font_file:
+        return base64.b64encode(font_file.read()).decode("utf-8")
+
+font_b64 = encode_font(f"{current_directory}/assets/fonts/ggsans-regular.ttf")
+fontmed_base64 = encode_font(f"{current_directory}/assets/fonts/ggsans-medium.ttf")
 
 class BoostPage:
     def __init__(self, nitro_type, authorname, authoravatar, authortext, receiveravatar, receivername, receivertext):
@@ -27,26 +34,20 @@ class BoostPage:
         self.receiver_message_datetime = self.receiver_message_datetime.strftime('Today at %I:%M %p')
     
     def get_proof(self):
-        filename = ""
-        nitro_image = ""
-        
-        if self.nitro_type == "boost":
-            filename = "assets/boost_page.txt"
-            nitro_image = f"{current_directory}/assets/nitro_boost_preset.png"
-        elif self.nitro_type == "classic":
-            filename = "assets/classic_page.txt"
-            nitro_image = f"{current_directory}/assets/nitro_classic_preset.png"
+        if self.nitro_type == "classic":
+            nitro_link = "https://discord.gift/"
+            nitro_image = f"file://{current_directory}/assets/nitro_presets/nitro_classic_preset.png"
         elif self.nitro_type == "promo":
-            filename = "assets/promo_page.txt"
-            nitro_image = f"{current_directory}/assets/nitro_promo_preset.png"
+            nitro_link = "https://discord.com/billing/promotions/"
+            nitro_image = f"file://{current_directory}/assets/nitro_presets/nitro_promo_preset.png"
         else:
-            filename = "assets/boost_page.txt"
-            nitro_image = f"{current_directory}/assets/nitro_boost_preset.png"
+            nitro_link = "https://discord.gift/"
+            nitro_image = f"file://{current_directory}/assets/nitro_presets/nitro_boost_preset.png"
 
-        with open(filename, 'r') as boost_page:
+        with open("assets/index.html", 'r') as boost_page:
             self.proof = boost_page.read() \
-                .replace('WHITNEYFONT', f"{current_directory}/assets/Whitneyfont.woff") \
-                .replace('WHITNEYMEDIUM', f"{current_directory}/assets/Whitneymedium.woff") \
+                .replace('GGSANSFONT', f"data:font/ttf;base64,{font_b64}") \
+                .replace('GGSANSMEDIUMFONT', f"data:font/ttf;base64,{fontmed_base64}") \
                 .replace('AUTHORNAME', self.authorname) \
                 .replace('AUTHORAVATAR', self.authoravatar) \
                 .replace('AUTHORDATETIME', self.sender_message_datetime) \
@@ -55,7 +56,8 @@ class BoostPage:
                 .replace('USERAVATAR', self.receiveravatar) \
                 .replace('USERDATETIME', self.receiver_message_datetime) \
                 .replace('USERTEXT', self.receivertext) \
-                .replace('NITROCODE', ''.join(random.choice('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ') for i in range(16))) \
+                .replace('NITROLINK', nitro_link) \
+                .replace('NITROCODE', ''.join(random.choice('0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ') for _ in range(16))) \
                 .replace('NITROIMAGESRC', nitro_image)
 
         return self.proof
@@ -86,6 +88,7 @@ async def on_message(message):
         return
     if message.content.startswith(client.user.mention):
         await message.channel.send(f"{message.author.mention}, do /proof to get a Proof!")
+
 
 class NitroProofCustom(discord.ui.Modal, title='Fake Nitro Proof System'):
     nitrotype = discord.ui.TextInput(
@@ -127,20 +130,21 @@ class NitroProofCustom(discord.ui.Modal, title='Fake Nitro Proof System'):
 
     async def on_submit(self, interaction: discord.Interaction):
         await interaction.response.defer(ephemeral=True)
-        if self.receiveravatar.value == "":
-            self.receiveravatar_value = config["default_avatar"]
-        else:
-            self.receiveravatar_value = self.receiveravatar.value
-        proof = BoostPage(self.nitrotype.value, interaction.user.display_name, interaction.user.avatar.url, self.authortext.value, self.receiveravatar_value, self.receivername.value, self.receivertext.value).get_proof()
-        image = hti.screenshot(html_str=proof, size=(random.randint(730, 1000), random.randint(320, 340)), save_as='proof.png')
-        
-        await interaction.followup.send(f"Proof generated! Check your DMs.", ephemeral=True)
-        await interaction.user.send(file=discord.File('proof.png'))
-        
+        try:
+            self.receiveravatar_value = self.receiveravatar.value if self.receiveravatar.value else config["default_avatar"]
+            proof = BoostPage(self.nitrotype.value, interaction.user.display_name, interaction.user.avatar.url, self.authortext.value, self.receiveravatar_value, self.receivername.value, self.receivertext.value).get_proof()
+            hti.screenshot(html_str=proof, size=(random.randint(730, 1100), random.randint(450, 470)), save_as='proof.png')
+            
+            await interaction.user.send(file=discord.File('proof.png'))
+            await interaction.followup.send(f"Proof generated! Check your DMs.", ephemeral=True)
+        except Exception as e:
+            await interaction.followup.send(f'Oops! Proof cannot be generated due to the following error: {e}', ephemeral=True)
+            return
 
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
         await interaction.response.send_message(f'Oops! Something went wrong. Please try again.', ephemeral=True)
         traceback.print_tb(error.__traceback__)
+
 
 class NitroProofId(discord.ui.Modal, title='Fake Nitro Proof System'):
     nitrotype = discord.ui.TextInput(
@@ -180,12 +184,12 @@ class NitroProofId(discord.ui.Modal, title='Fake Nitro Proof System'):
             self.author_avatar = interaction.user.display_avatar.url if interaction.user.avatar else config["default_avatar"]
             self.receiver_avatar = self.user.display_avatar.url if self.user.avatar else config["default_avatar"]
             proof = BoostPage(self.nitrotype.value, interaction.user.name, self.author_avatar, self.authortext.value, self.receiver_avatar, self.user.name, self.receivertext.value).get_proof()
-            image = hti.screenshot(html_str=proof, size=(random.randint(730, 1000), random.randint(320, 340)), save_as='proof.png')
+            hti.screenshot(html_str=proof, size=(random.randint(730, 1100), random.randint(450, 470)), save_as='proof.png')
             
-            await interaction.followup.send(f"Proof generated! Check your DMs.", ephemeral=True)
             await interaction.user.send(file=discord.File('proof.png'))
+            await interaction.followup.send(f"Proof generated! Check your DMs.", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f'Oops! {e}', ephemeral=True)
+            await interaction.followup.send(f'Oops! Proof cannot be generated due to the following error: {e}', ephemeral=True)
             return
         
     async def on_error(self, interaction: discord.Interaction, error: Exception) -> None:
