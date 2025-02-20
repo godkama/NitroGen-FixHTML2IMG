@@ -14,11 +14,6 @@
 
 ---
 
-## Disclaimer
-This script is potentially malicious and unethical. It can be used for malicious purposes, such as stealing user tokens, personal information, and other sensitive data. Using this script for malicious purposes without the user's consent is illegal and violates ethical guidelines. Do not use this script without proper authorization.
-
----
-
 ## Features
 
 - [x] - [Gen Proof from user's ID](https://github.com/AstraaDev/Discord-Fake-Nitro-Proof-Generator) - Create a proof from an existing user ID.
