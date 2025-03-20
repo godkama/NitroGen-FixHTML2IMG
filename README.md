@@ -45,6 +45,6 @@ $ python main.py
 
 ---
 
-## Additional Informations
-General Informations:
-- If you find any malfunction, join my [Discord Server](https://discord.gg/PKR7nM9j9U).
+## Additional Information
+- Need help? Join the [Discord Server](https://astraadev.github.io/discord).
+- Contributions are welcome! Open an issue or create a pull request.
