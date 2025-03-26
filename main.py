@@ -4,6 +4,8 @@ import datetime, random, traceback, json, os, base64
 from html2image import Html2Image
 
 hti = Html2Image(custom_flags=["--default-background-color=ffffff"])
+# this fixes the error raised by recent changes in chrome's headless mode
+hti.browser.use_new_headless = None # see vgalin/html2image recent issues
 config = json.load(open("config/config.json"))
 current_directory = os.path.abspath(os.path.dirname(__file__))
 
